@@ -1,0 +1,50 @@
+# Silent Binary Hardening Issues Extractor 配置文件
+
+# 爬取设置
+crawl_year: 2025  # 爬取年份
+
+# 关键词列表
+keywords:
+  - "hardening"
+  - "canary"
+  - "relro"
+  - "pie"
+  - "aslr"
+  - "fortify"
+  - "cfi"
+  - "cet"
+  - "pac"
+  - "shadow"
+  - "safe stack"
+  - "retpoline"
+  - "stack clash"
+  - "security flags"
+  - "insecure binary"
+  - "silent security bug"
+  - "compiled without"
+  - "miscompiled"
+  - "endbr"
+  - "stack_chk_fail"
+
+# LLM设置
+llm:
+  provider: "deepseek"  # 支持: deepseek
+  api_key: "sk-4422180763c845a19ae5999b05ec5088"  # 请填入您的API Key，或设置环境变量 DEEPSEEK_API_KEY
+  model: "deepseek-chat"
+  base_url: "https://api.deepseek.com"
+
+# 输出设置
+output:
+  format: "markdown"  # 支持: markdown, json
+  directory: "output/reports"
+
+# 爬虫设置
+crawlers:
+  max_pages: 5  # 每个爬虫最大爬取页数
+  delay: 1.0    # 请求间延迟(秒)
+  timeout: 30   # 请求超时时间(秒)
+
+# 分析设置
+analysis:
+  min_confidence: 0.6  # Silent Bug最小置信度阈值
+  batch_size: 10       # 批量分析大小
