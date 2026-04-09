@@ -5,7 +5,7 @@ Lore Kernel 爬虫实现
 import re
 import time
 from typing import List, Dict, Any, Optional
-from urllib.parse import urlencode, quote_plus
+from urllib.parse import urlencode, urljoin
 from bs4 import BeautifulSoup
 
 from src.core.base_crawler import BaseCrawler
@@ -15,7 +15,7 @@ from src.utils.http_client import HttpClient
 class LoreKernelCrawler(BaseCrawler):
     """Lore Kernel 邮件列表爬虫"""
     
-    def __init__(self, keywords: List[str], year: int = 2025):
+    def __init__(self, keywords: List[str], year: int | List[int] = 2025):
         super().__init__(
             name="LoreKernel",
             base_url="https://lore.kernel.org/all/",
@@ -37,9 +37,11 @@ class LoreKernelCrawler(BaseCrawler):
         """
         # 构建关键词查询字符串
         keywords_query = " OR ".join([f'"{keyword}"' for keyword in self.keywords])
+        years_query = " OR ".join([str(item) for item in self.years])
+        query = f"({keywords_query}) AND ({years_query})"
         
         params = {
-            'q': keywords_query
+            'q': query
         }
         
         if page > 0:
@@ -125,13 +127,16 @@ class LoreKernelCrawler(BaseCrawler):
         Returns:
             解析后的数据列表
         """
-        results = []
         soup = BeautifulSoup(html_content, 'html.parser')
+
+        # 优先解析 lore 当前搜索页的 <pre> 结构
+        pre_results = self._parse_pre_results(soup)
+        if pre_results:
+            return pre_results
+
+        results = []
         
-        # 查找邮件列表项
-        # lore.kernel.org 的邮件通常在 <pre> 标签中或特定的 div 结构中
-        
-        # 尝试查找邮件条目
+        # 兼容旧页面结构
         mail_items = soup.find_all('tr') or soup.find_all('div', class_='thread')
         
         for item in mail_items:
@@ -144,6 +149,65 @@ class LoreKernelCrawler(BaseCrawler):
                 continue
                 
         return results
+
+    def _parse_pre_results(self, soup: BeautifulSoup) -> List[Dict[str, Any]]:
+        """解析 lore 搜索结果页中 <pre> 结构的数据"""
+        pre_blocks = soup.find_all('pre')
+        if not pre_blocks:
+            return []
+
+        target_block = None
+        max_link_count = 0
+
+        for pre_block in pre_blocks:
+            result_links = pre_block.select('b > a[href]')
+            if len(result_links) > max_link_count and 'UTC' in pre_block.get_text():
+                target_block = pre_block
+                max_link_count = len(result_links)
+
+        if not target_block:
+            return []
+
+        results: List[Dict[str, Any]] = []
+        for link_tag in target_block.select('b > a[href]'):
+            result = self._extract_pre_item(link_tag)
+            if result and self.filter_by_keywords(f"{result.get('subject', '')} {result.get('content', '')}"):
+                results.append(result)
+
+        return results
+
+    def _extract_pre_item(self, link_tag) -> Optional[Dict[str, Any]]:
+        """从 <pre> 中的单条结果提取结构化信息"""
+        try:
+            href = (link_tag.get('href') or '').strip()
+            subject = link_tag.get_text(strip=True)
+            if not href or not subject:
+                return None
+
+            parent = link_tag.parent
+            metadata_text = str(parent.next_sibling) if parent and parent.next_sibling else ""
+
+            sender = ""
+            date = ""
+            metadata_match = re.search(
+                r'-\s*by\s*(.*?)\s*@\s*(\d{4}-\d{2}-\d{2}\s+\d{1,2}:\d{2}\s+UTC)',
+                metadata_text,
+                flags=re.S,
+            )
+            if metadata_match:
+                sender = metadata_match.group(1).strip()
+                date = re.sub(r'\s+', ' ', metadata_match.group(2).strip())
+
+            return {
+                'subject': subject,
+                'sender': sender,
+                'date': date,
+                'link': urljoin(self.base_url, href),
+                'content': subject,
+                'source': self.name,
+            }
+        except Exception:
+            return None
         
     def _extract_mail_info(self, item) -> Optional[Dict[str, Any]]:
         """
@@ -165,10 +229,7 @@ class LoreKernelCrawler(BaseCrawler):
             link = ""
             if link_elem and link_elem.get('href'):
                 href = link_elem.get('href')
-                if href.startswith('/'):
-                    link = f"{self.base_url}{href}"
-                else:
-                    link = href
+                link = urljoin(self.base_url, href)
                     
             # 查找发送者
             sender_elem = item.find('td', class_='from') or item.find_all('td')[1] if len(item.find_all('td')) > 1 else None
@@ -201,7 +262,7 @@ class LoreKernelCrawler(BaseCrawler):
                     'sender': sender,
                     'date': date,
                     'link': link,
-                    'content': content,
+                    'content': content or subject,
                     'source': self.name
                 }
                 

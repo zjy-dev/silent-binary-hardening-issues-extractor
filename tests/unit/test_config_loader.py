@@ -39,6 +39,16 @@ class TestConfigLoader(unittest.TestCase):
         self.assertIsInstance(year, int)
         self.assertGreaterEqual(year, 2020)
         self.assertLessEqual(year, 2030)
+
+    def test_get_years_returns_int_list(self):
+        """测试获取年份列表返回整数列表"""
+        years = self.config_loader.get_years()
+        self.assertIsInstance(years, list)
+        self.assertGreater(len(years), 0)
+        for year in years:
+            self.assertIsInstance(year, int)
+            self.assertGreaterEqual(year, 2020)
+            self.assertLessEqual(year, 2035)
     
     def test_get_year_current_or_future(self):
         """测试年份为当前或未来年份"""
