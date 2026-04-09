@@ -1,7 +1,7 @@
 # Silent Binary Hardening Issues Extractor 配置文件
 
 # 爬取设置
-crawl_year: 2025  # 爬取年份
+crawl_year: [2025, 2026]  # 爬取年份（支持单年或多年）
 
 # 关键词列表
 keywords:
@@ -28,10 +28,14 @@ keywords:
 
 # LLM设置
 llm:
-  provider: "deepseek"  # 支持: deepseek
-  api_key: "sk-4422180763c845a19ae5999b05ec5088"  # 请填入您的API Key，或设置环境变量 DEEPSEEK_API_KEY
-  model: "deepseek-chat"
-  base_url: "https://api.deepseek.com"
+  provider: "openai_compatible"  # 支持: deepseek, openai, openai_compatible
+  api_key: "test"  # 建议通过环境变量注入: LLM_API_KEY / OPENAI_API_KEY / DEEPSEEK_API_KEY
+  model: "gpt-5.3-codex"
+  base_url: "http://172.245.39.107:8317/v1"
+  timeout: 120  # LLM请求读取超时(秒)
+  max_retries: 2  # 失败重试次数
+  retry_backoff: 1.0  # 重试指数退避基数(秒)
+  use_env_proxy: false  # 默认忽略系统/环境代理，避免代理导致超时
 
 # 输出设置
 output:
@@ -40,7 +44,7 @@ output:
 
 # 爬虫设置
 crawlers:
-  max_pages: 5  # 每个爬虫最大爬取页数
+  max_pages: 100  # 每个爬虫最大爬取页数
   delay: 1.0    # 请求间延迟(秒)
   timeout: 30   # 请求超时时间(秒)
 

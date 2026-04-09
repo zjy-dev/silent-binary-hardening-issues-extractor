@@ -4,7 +4,7 @@ Lore Kernel 爬虫单元测试
 """
 
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import sys
 from pathlib import Path
 
@@ -92,29 +92,27 @@ class TestLoreKernelCrawler(unittest.TestCase):
                 self.assertIn("date", message)
                 self.assertIn("body", message)
     
-    @patch('crawlers.lore_kernel_crawler.requests.get')
+    @patch('crawlers.lore_kernel_crawler.HttpClient.get')
     def test_crawl_with_mock(self, mock_get):
         """测试爬取功能 - 使用Mock"""
-        # 模拟HTTP响应
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "messages": [
-                {
-                    "subject": "Test stack canary issue",
-                    "sender": "test@example.com",
-                    "date": "2025-01-01T10:00:00Z",
-                    "body": "This is about stack canary protection"
-                }
-            ]
-        }
-        mock_get.return_value = mock_response
+        mock_get.return_value = """
+        <html>
+            <body>
+                <pre>
+                    1. <b><a href="test-message/">Test stack canary issue</a></b>
+                       - by test@example.com @ 2025-01-01 10:00 UTC [50%]
+                </pre>
+            </body>
+        </html>
+        """
         
         # 执行爬取
         result = self.crawler.crawl(max_pages=1)
         
         # 验证结果
         self.assertIsInstance(result, list)
+        self.assertGreaterEqual(len(result), 1)
+        self.assertEqual(result[0].get("subject"), "Test stack canary issue")
         mock_get.assert_called_once()
     
     def test_keywords_validation(self):

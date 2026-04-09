@@ -2,7 +2,7 @@
 爬虫工厂 - 创建不同类型的爬虫
 """
 
-from typing import List, Dict, Any
+from typing import List
 from src.core.base_crawler import BaseCrawler
 from src.crawlers.lore_kernel_crawler import LoreKernelCrawler
 
@@ -11,14 +11,14 @@ class CrawlerFactory:
     """爬虫工厂类"""
     
     @staticmethod
-    def create_crawler(crawler_type: str, keywords: List[str], year: int = 2025) -> BaseCrawler:
+    def create_crawler(crawler_type: str, keywords: List[str], year: int | List[int] = 2025) -> BaseCrawler:
         """
         创建指定类型的爬虫
         
         Args:
             crawler_type: 爬虫类型
             keywords: 关键词列表
-            year: 爬取年份
+            year: 爬取年份（单年或多年）
             
         Returns:
             爬虫实例
@@ -41,13 +41,13 @@ class CrawlerFactory:
         return ["lore_kernel"]
         
     @staticmethod
-    def create_all_crawlers(keywords: List[str], year: int = 2025) -> List[BaseCrawler]:
+    def create_all_crawlers(keywords: List[str], year: int | List[int] = 2025) -> List[BaseCrawler]:
         """
         创建所有可用的爬虫
         
         Args:
             keywords: 关键词列表
-            year: 爬取年份
+            year: 爬取年份（单年或多年）
             
         Returns:
             爬虫实例列表

@@ -92,15 +92,19 @@ class Analyzer:
         Returns:
             分析器实例
         """
-        provider = llm_config.get('provider', 'deepseek').lower()
-        
-        if provider == 'deepseek':
+        provider = str(llm_config.get('provider', 'deepseek')).lower()
+
+        if provider in {'deepseek', 'openai', 'openai_compatible', 'openai-compatible'}:
             llm_client = DeepSeekClient(
                 api_key=llm_config.get('api_key', ''),
                 model=llm_config.get('model', 'deepseek-chat'),
-                base_url=llm_config.get('base_url', 'https://api.deepseek.com')
+                base_url=llm_config.get('base_url', 'https://api.deepseek.com'),
+                timeout=llm_config.get('timeout', 120),
+                max_retries=llm_config.get('max_retries', 2),
+                retry_backoff=llm_config.get('retry_backoff', 1.0),
+                use_env_proxy=llm_config.get('use_env_proxy', False),
             )
         else:
-            raise ValueError(f"不支持的LLM提供商: {provider}")
+            raise ValueError(f"不支持的LLM提供商: {provider}，支持: deepseek/openai/openai_compatible")
             
         return Analyzer(llm_client)

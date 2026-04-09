@@ -5,7 +5,6 @@
 import sys
 import os
 from pathlib import Path
-from typing import List
 
 # 添加src目录到Python路径
 sys.path.insert(0, str(Path(__file__).parent))
@@ -26,27 +25,33 @@ def main():
     print("📋 加载配置...")
     config_loader = ConfigLoader()
     keywords = config_loader.get_keywords()
-    year = config_loader.get_year()
+    years = config_loader.get_years()
     llm_config = config_loader.get_llm_config()
+    max_pages = config_loader.load_config().get('crawlers', {}).get('max_pages', 3)
     
     print(f"关键词: {', '.join(keywords[:5])}... (共{len(keywords)}个)")
-    print(f"爬取年份: {year}")
+    print(f"爬取年份: {', '.join(str(year) for year in years)}")
     print()
     
     # 检查API Key
     if not llm_config.get('api_key'):
-        print("⚠️  警告: 未配置LLM API Key，请在config/config.yaml中配置或设置环境变量DEEPSEEK_API_KEY")
-        api_key = os.getenv('DEEPSEEK_API_KEY')
-        if api_key:
-            llm_config['api_key'] = api_key
-            print("✅ 从环境变量获取到API Key")
-        else:
+        print("⚠️  警告: 未配置LLM API Key，请在config/config.yaml中配置或设置环境变量 LLM_API_KEY/OPENAI_API_KEY/DEEPSEEK_API_KEY")
+        env_key_names = ['LLM_API_KEY', 'OPENAI_API_KEY', 'DEEPSEEK_API_KEY']
+
+        for env_key_name in env_key_names:
+            api_key = os.getenv(env_key_name)
+            if api_key:
+                llm_config['api_key'] = api_key
+                print(f"✅ 从环境变量 {env_key_name} 获取到API Key")
+                break
+
+        if not llm_config.get('api_key'):
             print("❌ 未找到API Key，将无法进行LLM分析")
             return
     
     # 创建爬虫
     print("🕷️  创建爬虫...")
-    crawlers = CrawlerFactory.create_all_crawlers(keywords, year)
+    crawlers = CrawlerFactory.create_all_crawlers(keywords, years)
     print(f"创建了 {len(crawlers)} 个爬虫")
     
     # 爬取数据
@@ -54,7 +59,7 @@ def main():
     for crawler in crawlers:
         print(f"\n📥 使用 {crawler.name} 爬虫爬取数据...")
         try:
-            raw_data = crawler.crawl(max_pages=3)  # 限制前3页，避免爬取太久
+            raw_data = crawler.crawl(max_pages=max_pages)
             
             # 转换为Issue对象
             for item in raw_data:
@@ -71,6 +76,20 @@ def main():
                 
         except Exception as e:
             print(f"❌ 爬虫 {crawler.name} 执行失败: {e}")
+
+    # 去重，避免重复问题触发重复LLM请求
+    unique_issues = []
+    seen_issue_keys = set()
+    for issue in all_issues:
+        issue_key = (issue.url.strip(), issue.title.strip())
+        if issue_key in seen_issue_keys:
+            continue
+        seen_issue_keys.add(issue_key)
+        unique_issues.append(issue)
+
+    if len(unique_issues) < len(all_issues):
+        print(f"🔁 去重: {len(all_issues)} -> {len(unique_issues)}")
+    all_issues = unique_issues
             
     print(f"\n📊 总共爬取到 {len(all_issues)} 个问题")
     

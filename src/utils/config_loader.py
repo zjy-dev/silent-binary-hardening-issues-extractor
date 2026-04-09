@@ -52,13 +52,29 @@ class ConfigLoader:
         
     def get_year(self) -> int:
         """
-        获取爬取年份
+        获取单个爬取年份（兼容旧逻辑）
         
         Returns:
             年份
         """
+        years = self.get_years()
+        return years[0] if years else 2025
+
+    def get_years(self) -> List[int]:
+        """
+        获取爬取年份列表
+
+        支持以下配置形式：
+        - crawl_year: 2025
+        - crawl_year: [2025, 2026]
+        - crawl_years: [2025, 2026]
+
+        Returns:
+            年份列表
+        """
         config = self.load_config()
-        return config.get('crawl_year', 2025)
+        raw_years = config.get('crawl_years', config.get('crawl_year', 2025))
+        return self._normalize_years(raw_years)
         
     def get_llm_config(self) -> Dict[str, Any]:
         """
@@ -84,13 +100,43 @@ class ConfigLoader:
                 'provider': 'deepseek',
                 'api_key': '',
                 'model': 'deepseek-chat',
-                'base_url': 'https://api.deepseek.com'
+                'base_url': 'https://api.deepseek.com',
+                'timeout': 120,
+                'max_retries': 2,
+                'retry_backoff': 1.0,
+                'use_env_proxy': False,
             },
             'output': {
                 'format': 'markdown',
                 'directory': 'output/reports'
             }
         }
+
+    def _normalize_years(self, raw_years: Any) -> List[int]:
+        """规范化年份配置为去重后的整数列表"""
+        years: List[int] = []
+
+        if isinstance(raw_years, int):
+            years = [raw_years]
+        elif isinstance(raw_years, str):
+            if raw_years.strip().isdigit():
+                years = [int(raw_years.strip())]
+        elif isinstance(raw_years, list):
+            for year in raw_years:
+                try:
+                    years.append(int(year))
+                except (TypeError, ValueError):
+                    continue
+
+        if not years:
+            return [2025]
+
+        normalized_years: List[int] = []
+        for year in years:
+            if 2000 <= year <= 2100 and year not in normalized_years:
+                normalized_years.append(year)
+
+        return normalized_years or [2025]
         
     def _get_default_keywords(self) -> List[str]:
         """
