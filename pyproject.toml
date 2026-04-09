@@ -24,3 +24,8 @@ packages = ["src"]
 
 [tool.hatch.build.targets.sdist]
 include = ["/src", "/config", "/README.md", "/pyproject.toml"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]

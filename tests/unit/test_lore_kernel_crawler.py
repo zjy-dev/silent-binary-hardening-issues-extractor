@@ -95,7 +95,7 @@ class TestLoreKernelCrawler(unittest.TestCase):
     @patch('crawlers.lore_kernel_crawler.HttpClient.get')
     def test_crawl_with_mock(self, mock_get):
         """测试爬取功能 - 使用Mock"""
-        mock_get.return_value = """
+        search_page_html = """
         <html>
             <body>
                 <pre>
@@ -105,6 +105,15 @@ class TestLoreKernelCrawler(unittest.TestCase):
             </body>
         </html>
         """
+        email_detail_html = """
+        <html>
+            <body>
+                <pre>This patch fixes the missing stack canary on arm64 builds.
+The issue was that -fstack-protector-strong was not passed to gcc.</pre>
+            </body>
+        </html>
+        """
+        mock_get.side_effect = [search_page_html, email_detail_html]
         
         # 执行爬取
         result = self.crawler.crawl(max_pages=1)
@@ -113,7 +122,10 @@ class TestLoreKernelCrawler(unittest.TestCase):
         self.assertIsInstance(result, list)
         self.assertGreaterEqual(len(result), 1)
         self.assertEqual(result[0].get("subject"), "Test stack canary issue")
-        mock_get.assert_called_once()
+        # 验证邮件正文被正确获取（不再只是标题）
+        self.assertIn("stack canary", result[0].get("content", "").lower())
+        self.assertNotEqual(result[0].get("content"), result[0].get("subject"))
+        self.assertEqual(mock_get.call_count, 2)  # 搜索页 + 邮件详情页
     
     def test_keywords_validation(self):
         """测试关键词验证"""

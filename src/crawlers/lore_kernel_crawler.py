@@ -95,7 +95,15 @@ class LoreKernelCrawler(BaseCrawler):
                 for result in page_results:
                     if self.filter_by_year(result.get('date', '')):
                         filtered_results.append(result)
-                        
+
+                # 获取每封邮件的详细正文内容
+                for idx, result in enumerate(filtered_results, 1):
+                    if result.get('content', '') == result.get('subject', ''):
+                        print(f"  正在获取第 {idx}/{len(filtered_results)} 封邮件正文...")
+                        body = self._fetch_email_content(result.get('link', ''))
+                        if body:
+                            result['content'] = body
+
                 all_results.extend(filtered_results)
                 print(f"第 {page + 1} 页获取到 {len(filtered_results)} 条有效数据")
                 
@@ -198,16 +206,41 @@ class LoreKernelCrawler(BaseCrawler):
                 sender = metadata_match.group(1).strip()
                 date = re.sub(r'\s+', ' ', metadata_match.group(2).strip())
 
+            link = urljoin(self.base_url, href)
+
             return {
                 'subject': subject,
                 'sender': sender,
                 'date': date,
-                'link': urljoin(self.base_url, href),
+                'link': link,
                 'content': subject,
                 'source': self.name,
             }
         except Exception:
             return None
+
+    def _fetch_email_content(self, link: str) -> str:
+        """获取邮件详细正文内容
+
+        Args:
+            link: 邮件页面 URL
+
+        Returns:
+            邮件正文文本，获取失败时返回空字符串
+        """
+        if not link:
+            return ""
+        try:
+            html = self.http_client.get(link)
+            if not html:
+                return ""
+            soup = BeautifulSoup(html, 'html.parser')
+            content_elem = soup.find('pre') or soup.find('div', class_='message-body')
+            if content_elem:
+                return content_elem.get_text(strip=True)[:2000]
+        except Exception as e:
+            print(f"获取邮件详细内容失败 {link}: {e}")
+        return ""
         
     def _extract_mail_info(self, item) -> Optional[Dict[str, Any]]:
         """

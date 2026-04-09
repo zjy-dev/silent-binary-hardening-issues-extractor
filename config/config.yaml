@@ -29,9 +29,9 @@ keywords:
 # LLM设置
 llm:
   provider: "openai_compatible"  # 支持: deepseek, openai, openai_compatible
-  api_key: "test"  # 建议通过环境变量注入: LLM_API_KEY / OPENAI_API_KEY / DEEPSEEK_API_KEY
-  model: "gpt-5.3-codex"
-  base_url: "http://172.245.39.107:8317/v1"
+  api_key: "sk-xxxxxxxxxxxxxxxxxxxx"  # 建议通过环境变量注入: LLM_API_KEY / OPENAI_API_KEY / DEEPSEEK_API_KEY
+  model: "deepseek-chat"
+  base_url: "https://api.deepseek.com"
   timeout: 120  # LLM请求读取超时(秒)
   max_retries: 2  # 失败重试次数
   retry_backoff: 1.0  # 重试指数退避基数(秒)
